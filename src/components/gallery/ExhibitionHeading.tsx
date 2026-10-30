@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Text } from '@react-three/drei';
 
 interface ExhibitionHeadingProps {
@@ -9,74 +8,53 @@ interface ExhibitionHeadingProps {
   rotation: [number, number, number];
 }
 
-const GALLERY_THEMES: Record<string, { displayTitle: string; displaySubtitle: string }> = {
-  FRAGMENTS: {
-    displayTitle: 'FRAGMENTS / "NATOCCOLS',
-    displaySubtitle: '"In abstraction, the image is a mirror.\nWhat you see is shaped by what you bring."',
+const HEADINGS: Record<string, { title: string; quote: string; author?: string }> = {
+  ARCHITECTURE: {
+    title: 'ARCHITECTURE',
+    quote: '"The camera is an instrument that\nteaches people how to see without camera"',
+    author: 'DOROTHEA LANGE',
   },
-  NATURE: {
-    displayTitle: 'NATURE "',
-    displaySubtitle: '"In nature, we find the quiet order of things.\nAn organic geometry whispered in the wind."',
+  'UNSCRIPTED MOMENTS': {
+    title: 'UNSCRIPTED MOMENTS',
+    quote: '“Photography takes an instant out of\ntime, altering life by holding it still.”',
+    author: 'DOROTHEA LANGE',
+  },
+  FRAGMENTS: {
+    title: 'FRAGMENTS / “NATOCCOLS”',
+    quote: '“In abstraction, the image is a mirror.\nWhat you see is shaped by what you bring.”',
   },
   THRESHOLDS: {
-    displayTitle: 'THRESHOLDS',
-    displaySubtitle: '"The photograph, like a poem,\ndoesn\'t necessarily explain, rather it evokes."',
+    title: 'THRESHOLDS',
+    quote: '"The photograph, like a poem,\ndoesn\'t necessarily explain, rather it evokes."',
   },
-  ARCHITECTURE: {
-    displayTitle: 'ARCHITECTURE',
-    displaySubtitle: '"The camera is an instrument that teaches people how to see without camera."',
+  NATURE: {
+    title: 'NATURE',
+    quote: '"Actually, it\'s nature itself that creates the most\nbeautiful pictures. I\'m only choosing the perspective.',
+    author: 'KATJA MICHAEL',
   },
-  PORTRAITS: {
-    displayTitle: 'PORTRAITS / "PEOPLE"',
-    displaySubtitle: '"Every face is a map of journeys taken.\nA silent conversation across time and space."',
-  },
-  URBAN: {
-    displayTitle: 'URBAN / "CHRONICLES"',
-    displaySubtitle: '"The city never sleeps, it only remembers.\nA symphony of concrete, lights, and shadows."',
-  }
 };
 
 export default function ExhibitionHeading({ title, subtitle, position, rotation }: ExhibitionHeadingProps) {
-  const upperTitle = title.toUpperCase();
-  const theme = useMemo(() => {
-    return GALLERY_THEMES[upperTitle] || {
-      displayTitle: `${upperTitle}  `,
-      displaySubtitle: `"${subtitle}"`
-    };
-  }, [upperTitle, subtitle]);
-
+  const key = title.toUpperCase().startsWith('FRAGMENTS') ? 'FRAGMENTS' : title.toUpperCase();
+  const heading = HEADINGS[key] ?? { title: title.toUpperCase(), quote: subtitle };
   return (
     <group position={position} rotation={rotation}>
-      {/* PRIMARY TITLE - Printed directly on the clean gallery plaster wall */}
-      <Text
-        position={[0, 0.22, 0.015]}
-        fontSize={0.16}
-        color="#1E1E1C"
-        anchorX="center"
-        anchorY="middle"
-        fontWeight={500}
-        letterSpacing={0.12}
-        maxWidth={2.2}
-        textAlign="center"
-      >
-        {theme.displayTitle}
+      <Text position={[0, 0.43, 0.015]} fontSize={0.19} color="#111111"
+        anchorX="center" anchorY="middle" fontWeight={400} letterSpacing={0.015}
+        maxWidth={4.8} textAlign="center">
+        {heading.title}
       </Text>
-
-      {/* SECONDARY CURATORIAL SUBTITLE - Clean, elegant typography with generous margins */}
-      <Text
-        position={[0, -0.12, 0.015]}
-        fontSize={0.065}
-        color="#2E2E2C"
-        anchorX="center"
-        anchorY="middle"
-        fontWeight={400}
-        lineHeight={1.4}
-        letterSpacing={0.02}
-        maxWidth={2.0}
-        textAlign="center"
-      >
-        {theme.displaySubtitle}
+      <Text position={[0, 0.13, 0.015]} fontSize={0.105} color="#171717"
+        anchorX="center" anchorY="middle" fontWeight={400} lineHeight={1.25}
+        maxWidth={4.8} textAlign="center">
+        {heading.quote}
       </Text>
+      {heading.author && (
+        <Text position={[1.12, -0.09, 0.015]} fontSize={0.078} color="#111111"
+          anchorX="right" anchorY="middle" fontWeight={400}>
+          {heading.author}
+        </Text>
+      )}
     </group>
   );
 }
