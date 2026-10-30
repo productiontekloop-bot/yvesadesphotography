@@ -395,7 +395,7 @@ export const EXHIBITIONS: RoomData[] = [
       },
       {
         id: "r2-n2",
-        image: "/images/room-2/art-11.jpg",
+        image: "/images/room-2/art-6.webp",
         title: "Wilderness Solitude XI",
         artist: "Studio Ades",
         year: "2026",
@@ -979,7 +979,7 @@ export const EXHIBITIONS: RoomData[] = [
       },
       {
         id: "r5-e2",
-        image: "/images/room-5/14.PNG",
+        image: "/images/room-5/14.png",
         title: "Volumetric Cathedral XII",
         artist: "Studio Ades",
         year: "2026",

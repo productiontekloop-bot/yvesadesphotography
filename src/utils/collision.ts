@@ -13,6 +13,7 @@ function isDoorPassable(roomId: string): boolean {
 
 export function checkCollision(x: number, z: number, currentX?: number, currentZ?: number): { x: number; z: number } {
   const pad = 0.45; // Camera clearance padding from walls
+  const doorwayClearance = 0.25; // Half-width remaining after camera and door-frame clearance
 
   // Global outer perimeter bounds
   let nx = Math.max(-18 + pad, Math.min(18 - pad, x));
@@ -28,7 +29,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       nz = Math.max(-18 + pad, Math.min(18 - pad, nz));
       // Door to hallway at X = -10, Z = 0
       const canPass = isDoorPassable('room-5');
-      const inDoorway = Math.abs(currentZ - 0) < 0.85 && Math.abs(z - 0) < 0.85;
+      const inDoorway = Math.abs(currentZ - 0) < doorwayClearance && Math.abs(z - 0) < doorwayClearance;
       if (inDoorway && canPass) {
         nx = Math.min(18 - pad, nx); // Can walk through open door into hallway
       } else {
@@ -44,7 +45,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       // West wall at X = -10: Door to Room 5 at Z = 0
       if (nx < -10 + pad) {
         const canPass = isDoorPassable('room-5');
-        const inRoom5Door = Math.abs(currentZ - 0) < 0.85 && Math.abs(z - 0) < 0.85;
+        const inRoom5Door = Math.abs(currentZ - 0) < doorwayClearance && Math.abs(z - 0) < doorwayClearance;
         if (inRoom5Door && canPass) {
           nx = Math.max(-18 + pad, nx);
         } else {
@@ -56,8 +57,8 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       if (nz < -3.2 + pad) {
         const canPass4 = isDoorPassable('room-4');
         const canPass3 = isDoorPassable('room-3');
-        const inRoom4Door = Math.abs(currentX - (-3)) < 0.85 && Math.abs(x - (-3)) < 0.85;
-        const inRoom3Door = Math.abs(currentX - 11) < 0.85 && Math.abs(x - 11) < 0.85;
+        const inRoom4Door = Math.abs(currentX - (-3)) < doorwayClearance && Math.abs(x - (-3)) < doorwayClearance;
+        const inRoom3Door = Math.abs(currentX - 11) < doorwayClearance && Math.abs(x - 11) < doorwayClearance;
         if ((inRoom4Door && canPass4) || (inRoom3Door && canPass3)) {
           nz = Math.max(-18 + pad, nz);
         } else {
@@ -69,8 +70,8 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       if (nz > 3.2 - pad) {
         const canPass2 = isDoorPassable('room-2');
         const canPass1 = isDoorPassable('room-1');
-        const inRoom2Door = Math.abs(currentX - (-3)) < 0.85 && Math.abs(x - (-3)) < 0.85;
-        const inRoom1Door = Math.abs(currentX - 11) < 0.85 && Math.abs(x - 11) < 0.85;
+        const inRoom2Door = Math.abs(currentX - (-3)) < doorwayClearance && Math.abs(x - (-3)) < doorwayClearance;
+        const inRoom1Door = Math.abs(currentX - 11) < doorwayClearance && Math.abs(x - 11) < doorwayClearance;
         if ((inRoom2Door && canPass2) || (inRoom1Door && canPass1)) {
           nz = Math.min(18 - pad, nz);
         } else {
@@ -89,7 +90,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       // South wall at Z = -3.2: Door to hallway at X = -3
       if (nz > -3.2 - pad) {
         const canPass = isDoorPassable('room-4');
-        const inDoor = Math.abs(currentX - (-3)) < 0.85 && Math.abs(x - (-3)) < 0.85;
+        const inDoor = Math.abs(currentX - (-3)) < doorwayClearance && Math.abs(x - (-3)) < doorwayClearance;
         if (inDoor && canPass) {
           nz = Math.min(3.2 - pad, nz);
         } else {
@@ -107,7 +108,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       // South wall at Z = -3.2: Door to hallway at X = 11
       if (nz > -3.2 - pad) {
         const canPass = isDoorPassable('room-3');
-        const inDoor = Math.abs(currentX - 11) < 0.85 && Math.abs(x - 11) < 0.85;
+        const inDoor = Math.abs(currentX - 11) < doorwayClearance && Math.abs(x - 11) < doorwayClearance;
         if (inDoor && canPass) {
           nz = Math.min(3.2 - pad, nz);
         } else {
@@ -125,7 +126,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       // North wall at Z = 3.2: Door to hallway at X = -3
       if (nz < 3.2 + pad) {
         const canPass = isDoorPassable('room-2');
-        const inDoor = Math.abs(currentX - (-3)) < 0.85 && Math.abs(x - (-3)) < 0.85;
+        const inDoor = Math.abs(currentX - (-3)) < doorwayClearance && Math.abs(x - (-3)) < doorwayClearance;
         if (inDoor && canPass) {
           nz = Math.max(-3.2 + pad, nz);
         } else {
@@ -143,7 +144,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
       // North wall at Z = 3.2: Door to hallway at X = 11
       if (nz < 3.2 + pad) {
         const canPass = isDoorPassable('room-1');
-        const inDoor = Math.abs(currentX - 11) < 0.85 && Math.abs(x - 11) < 0.85;
+        const inDoor = Math.abs(currentX - 11) < doorwayClearance && Math.abs(x - 11) < doorwayClearance;
         if (inDoor && canPass) {
           nz = Math.max(-3.2 + pad, nz);
         } else {
@@ -160,7 +161,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
     nx = Math.max(-18 + pad, Math.min(-10 - pad, nx));
     nz = Math.max(-18 + pad, Math.min(18 - pad, nz));
     if (x > -10 - pad) {
-      if (Math.abs(z - 0) < 0.85 && isDoorPassable('room-5')) {
+      if (Math.abs(z - 0) < doorwayClearance && isDoorPassable('room-5')) {
         nx = x;
       } else {
         nx = -10 - pad;
@@ -172,7 +173,7 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
   // 2. Central Corridor (-10 <= X <= 18, -3.2 <= Z <= 3.2)
   if (nz >= -3.2 && nz <= 3.2) {
     if (nx < -10 + pad) {
-      if (Math.abs(nz - 0) < 0.85 && isDoorPassable('room-5')) {
+      if (Math.abs(nz - 0) < doorwayClearance && isDoorPassable('room-5')) {
         nx = Math.max(-18 + pad, nx);
       } else {
         nx = -10 + pad;
@@ -180,8 +181,8 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
     }
 
     if (nz < -3.2 + pad) {
-      const inRoom4Door = Math.abs(nx - (-3)) < 0.85 && isDoorPassable('room-4');
-      const inRoom3Door = Math.abs(nx - 11) < 0.85 && isDoorPassable('room-3');
+      const inRoom4Door = Math.abs(nx - (-3)) < doorwayClearance && isDoorPassable('room-4');
+      const inRoom3Door = Math.abs(nx - 11) < doorwayClearance && isDoorPassable('room-3');
       if (inRoom4Door || inRoom3Door) {
         nz = z;
       } else {
@@ -190,8 +191,8 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
     }
 
     if (nz > 3.2 - pad) {
-      const inRoom2Door = Math.abs(nx - (-3)) < 0.85 && isDoorPassable('room-2');
-      const inRoom1Door = Math.abs(nx - 11) < 0.85 && isDoorPassable('room-1');
+      const inRoom2Door = Math.abs(nx - (-3)) < doorwayClearance && isDoorPassable('room-2');
+      const inRoom1Door = Math.abs(nx - 11) < doorwayClearance && isDoorPassable('room-1');
       if (inRoom2Door || inRoom1Door) {
         nz = z;
       } else {
@@ -206,8 +207,8 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
   if (nz < -3.2) {
     nz = Math.max(-18 + pad, nz);
     if (nz > -3.2 - pad) {
-      const inRoom4Door = Math.abs(nx - (-3)) < 0.85 && isDoorPassable('room-4');
-      const inRoom3Door = Math.abs(nx - 11) < 0.85 && isDoorPassable('room-3');
+      const inRoom4Door = Math.abs(nx - (-3)) < doorwayClearance && isDoorPassable('room-4');
+      const inRoom3Door = Math.abs(nx - 11) < doorwayClearance && isDoorPassable('room-3');
       if (inRoom4Door || inRoom3Door) {
         nz = z;
       } else {
@@ -228,8 +229,8 @@ export function checkCollision(x: number, z: number, currentX?: number, currentZ
   if (nz > 3.2) {
     nz = Math.min(18 - pad, nz);
     if (nz < 3.2 + pad) {
-      const inRoom2Door = Math.abs(nx - (-3)) < 0.85 && isDoorPassable('room-2');
-      const inRoom1Door = Math.abs(nx - 11) < 0.85 && isDoorPassable('room-1');
+      const inRoom2Door = Math.abs(nx - (-3)) < doorwayClearance && isDoorPassable('room-2');
+      const inRoom1Door = Math.abs(nx - 11) < doorwayClearance && isDoorPassable('room-1');
       if (inRoom2Door || inRoom1Door) {
         nz = z;
       } else {

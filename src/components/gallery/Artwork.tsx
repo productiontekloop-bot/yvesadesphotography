@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo, memo } from 'react';
 import { Texture, FrontSide } from 'three';
 import { useGalleryStore } from '../../hooks/useGalleryStore';
 import { ArtworkData } from '../../data/exhibitions';
-import { getOrCreatePlaceholderTexture, loadArtworkTexture, isRoomWithinLoadDistance } from '../../utils/textureManager';
+import { getOrCreatePlaceholderTexture, loadArtworkTexture } from '../../utils/textureManager';
 
 interface ArtworkProps {
   artwork: ArtworkData;
@@ -18,42 +18,29 @@ function Artwork({ artwork }: ArtworkProps) {
     return getOrCreatePlaceholderTexture(artwork);
   }, [artwork]);
 
-  // 2. High-res image texture loader: query load distance without subscribing every frame
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    const checkAndLoad = () => {
-      const state = useGalleryStore.getState();
-      const shouldLoad = isRoomWithinLoadDistance(artwork.room, state.activeRoomId, state.visitorPosition);
-      if (shouldLoad) {
-        unsubscribe = loadArtworkTexture(artwork, (loadedTex) => {
-          setTexture(loadedTex);
-        });
-      }
-    };
-
-    checkAndLoad();
-
-    let prevRoomId = useGalleryStore.getState().activeRoomId;
-    const unsubStore = useGalleryStore.subscribe((state) => {
-      if (state.activeRoomId !== prevRoomId) {
-        prevRoomId = state.activeRoomId;
-        checkAndLoad();
-      }
+  // Load each real photo once; the shared queue limits concurrent decoding.
+  useEffect(() => loadArtworkTexture(artwork, loadedTex => {
+    setTexture(loadedTex);
+    useGalleryStore.getState().setArtworkLoadError(artwork.id, null);
+  }, () => {
+    useGalleryStore.getState().setArtworkLoadError(artwork.id, {
+      title: artwork.title, image: artwork.image
     });
-
-    return () => {
-      unsubStore();
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [artwork]);
+  }), [artwork]);
 
   const navigateToArtwork = useGalleryStore((state) => state.navigateToArtwork);
 
-  const displayWidth = artwork.width;
-  const displayHeight = artwork.height;
+  const image = texture?.image as { width?: number; height?: number } | undefined;
+  const imageAspectRatio = image?.width && image.height
+    ? image.width / image.height
+    : artwork.width / artwork.height;
+  const frameAspectRatio = artwork.width / artwork.height;
+  const displayWidth = imageAspectRatio > frameAspectRatio
+    ? artwork.width
+    : artwork.height * imageAspectRatio;
+  const displayHeight = imageAspectRatio > frameAspectRatio
+    ? artwork.width / imageAspectRatio
+    : artwork.height;
 
   const triggerNavigation = () => {
     const now = Date.now();
@@ -102,11 +89,9 @@ function Artwork({ artwork }: ArtworkProps) {
       {/* Pure, clean image mounted directly on wall without frames or shadows */}
       <mesh position={[0, 0, 0.005]}>
         <planeGeometry args={[displayWidth, displayHeight]} />
-        <meshStandardMaterial 
+        <meshBasicMaterial 
           map={texture || placeholderTexture} 
-          roughness={0.12} 
-          metalness={0.0} 
-          toneMapped={true} 
+          toneMapped={false} 
           side={FrontSide}
         />
       </mesh>

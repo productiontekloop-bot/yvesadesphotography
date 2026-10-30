@@ -4,6 +4,9 @@ import { EXHIBITIONS, NAVIGATION_NODES, ArtworkData, RoomData, NavigationNode } 
 export type ViewMode = 'perspective' | 'floorplan' | 'walkthrough';
 
 interface GalleryState {
+  assetLoadErrors: Record<string, { title: string; image: string }>;
+  setArtworkLoadError: (artworkId: string, error: { title: string; image: string } | null) => void;
+
   // View mode
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -54,6 +57,17 @@ interface GalleryState {
 }
 
 export const useGalleryStore = create<GalleryState>((set, get) => ({
+  assetLoadErrors: {},
+  setArtworkLoadError: (artworkId, error) => set((state) => {
+    const assetLoadErrors = { ...state.assetLoadErrors };
+    if (error) {
+      assetLoadErrors[artworkId] = error;
+    } else {
+      delete assetLoadErrors[artworkId];
+    }
+    return { assetLoadErrors };
+  }),
+
   // Default to the first-person Walkthrough View from the entrance
   viewMode: 'walkthrough',
   setViewMode: (mode) => {

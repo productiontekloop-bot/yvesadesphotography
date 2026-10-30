@@ -9,6 +9,52 @@ const scratchPosTarget = new Vector3();
 const scratchLookTarget = new Vector3();
 const scratchDir = new Vector3();
 const scratchTargetDir = new Vector3();
+const scratchPreviousPosition = new Vector3();
+
+const ROOM_DOORWAYS: Record<string, { roomSide: [number, number]; threshold: [number, number]; hallSide: [number, number] }> = {
+  'room-1': { roomSide: [11, 4.3], threshold: [11, 3.2], hallSide: [11, 2.1] },
+  'room-2': { roomSide: [-3, 4.3], threshold: [-3, 3.2], hallSide: [-3, 2.1] },
+  'room-3': { roomSide: [11, -4.3], threshold: [11, -3.2], hallSide: [11, -2.1] },
+  'room-4': { roomSide: [-3, -4.3], threshold: [-3, -3.2], hallSide: [-3, -2.1] },
+  'room-5': { roomSide: [-11.2, 0], threshold: [-10, 0], hallSide: [-8.8, 0] },
+};
+
+function getTransitionWaypoints(
+  start: [number, number, number],
+  destination: [number, number, number]
+): [number, number, number][] {
+  const currentRoom = getRoomIdFromPosition(start[0], start[2]);
+  const targetRoom = getRoomIdFromPosition(destination[0], destination[2]);
+  if (currentRoom === targetRoom) return [];
+
+  const waypoints: [number, number, number][] = [];
+  const addPoint = (point: [number, number], y: number) => {
+    waypoints.push([point[0], y, point[1]]);
+  };
+
+  if (currentRoom !== 'hallway') {
+    const doorway = ROOM_DOORWAYS[currentRoom];
+    if (doorway) {
+      addPoint(doorway.roomSide, start[1]);
+      addPoint(doorway.threshold, start[1]);
+      addPoint(doorway.hallSide, start[1]);
+    }
+  }
+
+  if (targetRoom !== 'hallway') {
+    const doorway = ROOM_DOORWAYS[targetRoom];
+    if (doorway) {
+      addPoint(doorway.hallSide, destination[1]);
+      addPoint(doorway.threshold, destination[1]);
+      addPoint(doorway.roomSide, destination[1]);
+    }
+  }
+
+  return waypoints.filter((point, index) => {
+    const previous = index === 0 ? start : waypoints[index - 1];
+    return Math.hypot(point[0] - previous[0], point[2] - previous[2]) > 0.2;
+  });
+}
 
 export default function PlayerController() {
   const { camera, gl } = useThree();
@@ -46,6 +92,10 @@ export default function PlayerController() {
 
   // Store sync rate controller
   const lastStoreUpdate = useRef<number>(0);
+  const interpolationTarget = useRef<[number, number, number] | null>(null);
+  const transitionWaypoints = useRef<[number, number, number][]>([]);
+  const transitionWaypointIndex = useRef(0);
+  const enforceTransitionCollision = useRef(false);
 
   // Initialize camera position from store on mount
   useEffect(() => {
@@ -219,11 +269,42 @@ export default function PlayerController() {
 
     // 1. HANDLE SMOOTH WARPING INTERPOLATION
     if (targetPosition) {
-      scratchPosTarget.set(targetPosition[0], targetPosition[1], targetPosition[2]);
+      if (interpolationTarget.current !== targetPosition) {
+        interpolationTarget.current = targetPosition;
+        enforceTransitionCollision.current = camera.position.y < 4.5 && targetPosition[1] < 4.5;
+        transitionWaypoints.current = enforceTransitionCollision.current
+          ? getTransitionWaypoints(
+              [camera.position.x, camera.position.y, camera.position.z],
+              targetPosition
+            )
+          : [];
+        transitionWaypoints.current.push(targetPosition);
+        transitionWaypointIndex.current = 0;
+      }
+
+      const activeWaypoint = transitionWaypoints.current[transitionWaypointIndex.current];
+      scratchPosTarget.set(activeWaypoint[0], activeWaypoint[1], activeWaypoint[2]);
+      scratchPreviousPosition.copy(camera.position);
       camera.position.lerp(scratchPosTarget, 0.06);
 
-      if (targetLookAt) {
+      if (enforceTransitionCollision.current) {
+        const verifiedPosition = checkCollision(
+          camera.position.x,
+          camera.position.z,
+          scratchPreviousPosition.x,
+          scratchPreviousPosition.z
+        );
+        camera.position.x = verifiedPosition.x;
+        camera.position.z = verifiedPosition.z;
+      }
+
+      const nextWaypoint = transitionWaypoints.current[transitionWaypointIndex.current + 1];
+      if (nextWaypoint) {
+        scratchLookTarget.set(nextWaypoint[0], nextWaypoint[1], nextWaypoint[2]);
+      } else if (targetLookAt) {
         scratchLookTarget.set(targetLookAt[0], targetLookAt[1], targetLookAt[2]);
+      }
+      if (nextWaypoint || targetLookAt) {
         currentLookAt.current.lerp(scratchLookTarget, 0.06);
         camera.lookAt(currentLookAt.current);
       }
@@ -231,6 +312,11 @@ export default function PlayerController() {
       // Check arrival
       if (camera.position.distanceTo(scratchPosTarget) < 0.12) {
         camera.position.copy(scratchPosTarget);
+        transitionWaypointIndex.current += 1;
+        if (transitionWaypointIndex.current < transitionWaypoints.current.length) {
+          return;
+        }
+
         if (targetLookAt) {
           currentLookAt.current.set(targetLookAt[0], targetLookAt[1], targetLookAt[2]);
           camera.lookAt(currentLookAt.current);
@@ -247,6 +333,10 @@ export default function PlayerController() {
           store.setActiveRoomId(currentRoom);
         }
         store.clearInterpolationTargets();
+        interpolationTarget.current = null;
+        transitionWaypoints.current = [];
+        transitionWaypointIndex.current = 0;
+        enforceTransitionCollision.current = false;
       }
       return;
     }
@@ -257,15 +347,15 @@ export default function PlayerController() {
         const x = orbitCenter.current.x + orbitRadius.current * Math.sin(orbitPhi.current) * Math.sin(orbitTheta.current);
         const y = orbitRadius.current * Math.cos(orbitPhi.current);
         const z = orbitCenter.current.z + orbitRadius.current * Math.sin(orbitPhi.current) * Math.cos(orbitTheta.current);
-        camera.position.lerp(new Vector3(x, y, z), 0.15);
+        camera.position.lerp(scratchPosTarget.set(x, y, z), 0.15);
         camera.lookAt(orbitCenter.current);
       }
       return;
     }
 
     if (viewMode === 'floorplan' && !selectedArtwork) {
-      camera.position.lerp(new Vector3(0, 42, 0.01), 0.1);
-      camera.lookAt(new Vector3(0, 0, 0));
+      camera.position.lerp(scratchPosTarget.set(0, 42, 0.01), 0.1);
+      camera.lookAt(scratchLookTarget.set(0, 0, 0));
       return;
     }
 
@@ -329,8 +419,12 @@ export default function PlayerController() {
     const now = state.clock.getElapsedTime();
     if (now - lastStoreUpdate.current > 0.1) {
       lastStoreUpdate.current = now;
-      store.setVisitorPosition([camera.position.x, camera.position.y, camera.position.z]);
-      store.setVisitorTarget([currentLookAt.current.x, currentLookAt.current.y, currentLookAt.current.z]);
+      if (Math.hypot(camera.position.x - store.visitorPosition[0], camera.position.y - store.visitorPosition[1], camera.position.z - store.visitorPosition[2]) > 0.001) {
+        store.setVisitorPosition([camera.position.x, camera.position.y, camera.position.z]);
+      }
+      if (Math.hypot(currentLookAt.current.x - store.visitorTarget[0], currentLookAt.current.y - store.visitorTarget[1], currentLookAt.current.z - store.visitorTarget[2]) > 0.001) {
+        store.setVisitorTarget([currentLookAt.current.x, currentLookAt.current.y, currentLookAt.current.z]);
+      }
       const currentRoom = getRoomIdFromPosition(camera.position.x, camera.position.z);
       if (store.activeRoomId !== currentRoom) {
         store.setActiveRoomId(currentRoom);

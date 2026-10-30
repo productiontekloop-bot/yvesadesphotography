@@ -1,5 +1,6 @@
-import { Canvas } from '@react-three/fiber';
-import { Suspense, useRef } from 'react';
+import { hasPendingArtworkLoads } from '../../utils/textureManager';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Component, ErrorInfo, ReactNode, Suspense, useRef } from 'react';
 import { EXHIBITIONS } from '../../data/exhibitions';
 import { useGalleryStore } from '../../hooks/useGalleryStore';
 import { checkCollision, getRoomIdFromPosition } from '../../utils/collision';
@@ -9,12 +10,54 @@ import CentralHallway from './CentralHallway';
 import ExhibitionRoom from './ExhibitionRoom';
 import PlayerController from './PlayerController';
 
-export default function VirtualGallery() {
+interface VirtualGalleryProps {
+  onReady: () => void;
+  onError: () => void;
+}
+
+interface GalleryErrorBoundaryProps extends VirtualGalleryProps {
+  children: ReactNode;
+}
+
+interface GalleryErrorBoundaryState {
+  error: Error | null;
+}
+
+class GalleryErrorBoundary extends Component<GalleryErrorBoundaryProps, GalleryErrorBoundaryState> {
+  state: GalleryErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): GalleryErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
+    console.error('The 3D gallery failed to render.', error);
+    this.props.onError();
+  }
+
+  render() {
+    return this.state.error ? null : this.props.children;
+  }
+}
+
+function GalleryReadySignal({ onReady }: { onReady: () => void }) {
+  const hasReportedReady = useRef(false);
+
+  useFrame(() => {
+    if (!hasReportedReady.current && !hasPendingArtworkLoads()) {
+      hasReportedReady.current = true;
+      onReady();
+    }
+  });
+
+  return null;
+}
+
+export default function VirtualGallery({ onReady, onError }: VirtualGalleryProps) {
   const pointerDownPos = useRef({ x: 0, y: 0 });
   const pointerDownTime = useRef(0);
   
   const moveToPosition = useGalleryStore((state) => state.moveToPosition);
-  const visitorPosition = useGalleryStore((state) => state.visitorPosition);
   const selectedArtwork = useGalleryStore((state) => state.selectedArtwork);
   const viewMode = useGalleryStore((state) => state.viewMode);
 
@@ -25,6 +68,7 @@ export default function VirtualGallery() {
   };
 
   const handlePointerUp = (e: any) => {
+    const visitorPosition = useGalleryStore.getState().visitorPosition;
     if (selectedArtwork) return;
     if (e.button !== 0 && e.nativeEvent instanceof MouseEvent) return;
 
@@ -77,54 +121,63 @@ export default function VirtualGallery() {
 
   return (
     <div id="canvas-container" className="w-full h-full select-none relative bg-[#E6E6E3] block">
-      <Canvas
-        dpr={[1, 1.5]}
-        camera={{
-          fov: 56,
-          near: 0.1,
-          far: 90,
-          position: [-15, 27, 29]
-        }}
-        gl={{
-          antialias: true,
-          powerPreference: 'high-performance',
-          alpha: false,
-          preserveDrawingBuffer: false
-        }}
-        onCreated={({ gl }) => {
-          gl.toneMappingExposure = 1.12;
-        }}
-      >
-        <Suspense fallback={null}>
-          <group 
-            onPointerDown={handlePointerDown} 
-            onPointerUp={handlePointerUp}
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            {/* Clean architectural studio background tone */}
-            <color attach="background" args={['#E2E2DF']} />
+      <GalleryErrorBoundary onReady={onReady} onError={onError}>
+        <Canvas
+          dpr={1}
+          camera={{
+            fov: 56,
+            near: 0.1,
+            far: 90,
+            position: [-15, 27, 29]
+          }}
+          gl={{
+            antialias: false,
+            powerPreference: 'high-performance',
+            alpha: false,
+            preserveDrawingBuffer: false
+          }}
+          onCreated={({ gl }) => {
+            gl.toneMappingExposure = 1.12;
+            gl.domElement.addEventListener('webglcontextlost', (event) => {
+              event.preventDefault();
+              onError();
+            });
+            gl.domElement.addEventListener('webglcontextrestored', onReady);
+          }}
+        >
+          <Suspense fallback={<color attach="background" args={['#E2E2DF']} />}>
+            <group
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <GalleryReadySignal onReady={onReady} />
 
-            {/* Realistic curatorial exhibition lighting setup */}
-            <GalleryLighting />
+              {/* Clean architectural studio background tone */}
+              <color attach="background" args={['#E2E2DF']} />
 
-            {/* Camera & Interactive navigation controller */}
-            <PlayerController />
+              {/* Realistic curatorial exhibition lighting setup */}
+              <GalleryLighting />
 
-            {/* Complete 5-room modern art gallery architecture with wooden doors */}
-            <GalleryArchitecture />
+              {/* Camera & Interactive navigation controller */}
+              <PlayerController />
 
-            {/* Corridor curated elements */}
-            <CentralHallway />
+              {/* Complete 5-room modern art gallery architecture with wooden doors */}
+              <GalleryArchitecture />
 
-            {/* 5 Procedural Exhibition Galleries */}
-            {EXHIBITIONS.map((room) => (
-              <ExhibitionRoom key={room.id} room={room} />
-            ))}
-          </group>
-        </Suspense>
-      </Canvas>
+              {/* Corridor curated elements */}
+              <CentralHallway />
+
+              {/* 5 Procedural Exhibition Galleries */}
+              {EXHIBITIONS.map((room) => (
+                <ExhibitionRoom key={room.id} room={room} />
+              ))}
+            </group>
+          </Suspense>
+        </Canvas>
+      </GalleryErrorBoundary>
     </div>
   );
 }
