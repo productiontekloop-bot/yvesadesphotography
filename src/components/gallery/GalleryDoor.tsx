@@ -185,19 +185,19 @@ export default function GalleryDoor({
       {/* ==================== 1. REALISTIC WOODEN DOOR FRAME ==================== */}
       {/* Top Header Jamb */}
       <mesh position={[0, doorHeight + 0.05, 0]}>
-        <boxGeometry args={[doorWidth + 0.22, 0.1, 0.24]} />
+        <boxGeometry args={[doorWidth + 0.22, 0.1, 0.34]} />
         <meshStandardMaterial color="#351F11" roughness={0.7} metalness={0.05} />
       </mesh>
 
       {/* Left Vertical Frame Post */}
       <mesh position={[-doorWidth / 2 - 0.055, doorHeight / 2, 0]}>
-        <boxGeometry args={[0.11, doorHeight + 0.1, 0.24]} />
+        <boxGeometry args={[0.11, doorHeight + 0.1, 0.34]} />
         <meshStandardMaterial color="#351F11" roughness={0.7} metalness={0.05} />
       </mesh>
 
       {/* Right Vertical Frame Post */}
       <mesh position={[doorWidth / 2 + 0.055, doorHeight / 2, 0]}>
-        <boxGeometry args={[0.11, doorHeight + 0.1, 0.24]} />
+        <boxGeometry args={[0.11, doorHeight + 0.1, 0.34]} />
         <meshStandardMaterial color="#351F11" roughness={0.7} metalness={0.05} />
       </mesh>
 
@@ -205,6 +205,19 @@ export default function GalleryDoor({
       <mesh position={[0, 0.015, 0]}>
         <boxGeometry args={[doorWidth + 0.1, 0.03, 0.26]} />
         <meshStandardMaterial color="#555555" roughness={0.4} metalness={0.8} />
+      </mesh>
+
+      {/* Rebate behind the closed leaf overlaps the clearance on each side.
+          The leaf swings toward +Z, leaving this fixed stop behind it. */}
+      {[-1, 1].map(side => (
+        <mesh key={`jamb-stop-${side}`} position={[side * (doorWidth / 2 - 0.01), doorHeight / 2, -0.055]}>
+          <boxGeometry args={[0.08, doorHeight, 0.045]} />
+          <meshStandardMaterial color="#351F11" roughness={0.7} metalness={0.05} />
+        </mesh>
+      ))}
+      <mesh position={[0, doorHeight - 0.01, -0.055]}>
+        <boxGeometry args={[doorWidth, 0.06, 0.045]} />
+        <meshStandardMaterial color="#351F11" roughness={0.7} metalness={0.05} />
       </mesh>
 
       {/* ==================== 2. HINGED WOODEN DOOR LEAF ==================== */}
